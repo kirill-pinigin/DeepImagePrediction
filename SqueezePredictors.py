@@ -76,6 +76,116 @@ class SqueezePredictor(nn.Module):
             final_norm_layer = EmptyNorm()
         self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2),
         self.norm1 = first_norm_layer
+        self.downsample1 = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.fire1 = FireConvNorm(96, 16, 64, 64, activation=activation, type_norm=type_norm)
+        self.fire2 = FireConvNorm(128, 16, 64, 64, activation=activation, type_norm=type_norm)
+        self.fire3 = FireConvNorm(128, 32, 128, 128, activation=activation, type_norm=type_norm)
+        self.downsample2 = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.fire4 = FireConvNorm(256, 32, 128, 128, activation=activation, type_norm=type_norm)
+        self.fire5 = FireConvNorm(256, 48, 192, 192, activation=activation, type_norm=type_norm)
+        self.fire6 = FireConvNorm(384, 48, 192, 192, activation=activation, type_norm=type_norm)
+        self.fire7 = FireConvNorm(384, 64, 256, 256, activation=activation, type_norm=type_norm)
+        self.downsample3 = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.fire8 = FireConvNorm(512, 64, 256, 256, activation=activation, type_norm=type_norm)
+        if pretrained:
+            model = models.squeezenet1_0(pretrained=True).features
+            if channels == 3:
+                self.conv1 = model[0]
+
+            self.fire1.squeeze = model[3].squeeze
+            self.fire1.expand1x1 = model[3].expand1x1
+            self.fire1.expand3x3 = model[3].expand3x3
+            self.fire1.ConfigureNorm()
+
+            self.fire2.squeeze = model[4].squeeze
+            self.fire2.expand1x1 = model[4].expand1x1
+            self.fire2.expand3x3 = model[4].expand3x3
+            self.fire2.ConfigureNorm()
+
+            self.fire3.squeeze = model[5].squeeze
+            self.fire3.expand1x1 = model[5].expand1x1
+            self.fire3.expand3x3 = model[5].expand3x3
+            self.fire3.ConfigureNorm()
+
+            self.fire4.squeeze = model[7].squeeze
+            self.fire4.expand1x1 = model[7].expand1x1
+            self.fire4.expand3x3 = model[7].expand3x3
+            self.fire4.ConfigureNorm()
+
+            self.fire5.squeeze = model[8].squeeze
+            self.fire5.expand1x1 = model[8].expand1x1
+            self.fire5.expand3x3 = model[8].expand3x3
+            self.fire5.ConfigureNorm()
+
+            self.fire6.squeeze = model[9].squeeze
+            self.fire6.expand1x1 = model[9].expand1x1
+            self.fire6.expand3x3 = model[9].expand3x3
+            self.fire6.ConfigureNorm()
+
+            self.fire7.squeeze = model[10].squeeze
+            self.fire7.expand1x1 = model[10].expand1x1
+            self.fire7.expand3x3 = model[10].expand3x3
+            self.fire7.ConfigureNorm()
+
+            self.fire8.squeeze = model[12].squeeze
+            self.fire8.expand1x1 = model[12].expand1x1
+            self.fire8.expand3x3 = model[12].expand3x3
+            self.fire8.ConfigureNorm()
+
+        else:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    init.kaiming_uniform(m.weight)
+                    if m.bias is not None:
+                        init.constant(m.bias, 0)
+
+        final_conv = nn.Conv2d(512, 1, kernel_size=1)
+        init.normal(final_conv.weight, mean=0.0, std=0.01)
+        init.constant(final_conv.bias, 0)
+
+        self.predictor = nn.Sequential(
+            nn.Dropout(p=0.5),
+            final_conv,
+            final_norm_layer,
+            activation,
+            nn.AdaptiveAvgPool2d(output_size=1),
+        )
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = self.activation(x)
+        x = self.downsample1(x)
+        x = self.fire1(x)
+        x = self.fire2(x)
+        x = self.fire3(x)
+        x = self.downsample2(x)
+        x = self.fire4(x)
+        x = self.fire5(x)
+        x = self.fire6(x)
+        x = self.fire7(x)
+        x = self.downsample3(x)
+        x = self.fire8(x)
+        x = self.predictor(x)
+        return x.view(x.size(0), self.dimension)
+
+
+class SqueezeResidualPredictor(nn.Module):
+    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(), pretrained = True, type_norm = 'batch'):
+        super(SqueezeResidualPredictor, self).__init__()
+        self.activation = activation
+        self.dimension = dimension
+        if type_norm == 'instance':
+            first_norm_layer = nn.InstanceNorm2d(96)
+            final_norm_layer = nn.InstanceNorm2d(dimension)
+        elif type_norm == 'batch':
+            first_norm_layer = nn.BatchNorm2d(96)
+            final_norm_layer = nn.BatchNorm2d(dimension)
+        else:
+            first_norm_layer = EmptyNorm()
+            final_norm_layer = EmptyNorm()
+        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2),
+        self.norm1 = first_norm_layer
         self.downsample1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.fire1 = FireConvNorm(96, 16, 64, 64, activation=activation, type_norm=type_norm)
         self.fire2 = FireConvNorm(128, 16, 64, 64, activation=activation, type_norm=type_norm)
@@ -143,13 +253,12 @@ class SqueezePredictor(nn.Module):
         init.normal(final_conv.weight, mean=0.0, std=0.01)
         init.constant(final_conv.bias, 0)
 
-        self.predictor = nn.Sequential(
+        self.bottleneck = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
             final_norm_layer,
             activation,
             nn.AdaptiveAvgPool2d(output_size=1),
-            nn.Softmax(dim=1),
         )
 
     def forward(self, x):
@@ -164,5 +273,5 @@ class SqueezePredictor(nn.Module):
         x = self.fire6(x)
         x = self.fire7(x)
         x = self.fire8(x)
-        x = self.predictor(x)
+        x = self.bottleneck(x)
         return x.view(x.size(0), self.dimension)
