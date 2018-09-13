@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from  ImagesRegressionCSVDataSet import  ImagesRegressionCSVDataSet , make_validation_split
 
 from DeepImagePrediction import DeepImagePrediction
-from SqueezePredictors import  SqueezePredictor
+from SqueezePredictors import  SqueezePredictor, SqueezeResidualPredictor, SqueezeShuntPredictor
 
 class SiLU(torch.nn.Module):
     def __init__(self):
@@ -22,7 +22,7 @@ class SiLU(torch.nn.Module):
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
-parser.add_argument('--predictor',      type = str,   default='StanfordImageTransformer', help='type of image generator')
+parser.add_argument('--predictor',      type = str,   default='SqueezeResidualPredictor', help='type of image generator')
 parser.add_argument('--activation',     type = str,   default='ReLU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='MSE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
@@ -31,15 +31,16 @@ parser.add_argument('--dimension',       type = int,   default='1')
 parser.add_argument('--channels',       type = int,   default='3')
 parser.add_argument('--image_size',     type = int,   default='224')
 parser.add_argument('--batch_size',     type = int,   default='4')
-parser.add_argument('--epochs',         type = int,   default='256')
+parser.add_argument('--epochs',         type = int,   default='101')
 parser.add_argument('--augmentation',   type = bool,  default='True', help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default='True', help='type of training')
 
 args = parser.parse_args()
 
-
-predictor_types = { 'SqueezePredictors' : SqueezePredictor  }
-
+predictor_types = { 'SqueezePredictor'         : SqueezePredictor,
+                    'SqueezeResidualPredictor' : SqueezeResidualPredictor,
+                    'SqueezeShuntPredictor'    : SqueezeShuntPredictor
+                    }
 
 activation_types = {'ReLU'     : nn.ReLU(),
                     'SSIMloss' : nn.LeakyReLU(),
@@ -60,7 +61,7 @@ optimizer_types = {
                     'SGD'           : optim.SGD
                     }
 
-model = (predictor_types[args.predictor] if args.predictor in predictor_types else predictor_types['SqueezePredictors'])
+model = (predictor_types[args.predictor] if args.predictor in predictor_types else predictor_types['SqueezePredictor'])
 function = (activation_types[args.activation] if args.activation in activation_types else activation_types['ReLU'])
 
 predictor = model(dimension=args.dimension , channels=args.channels, activation=function)
@@ -96,4 +97,4 @@ dataloaders = make_validation_split(image_datasets, batch_size = args.batch_size
 
 framework = DeepImagePrediction(predictor = predictor, criterion = criterion, optimizer = optimizer, dataloaders = dataloaders, num_epochs=args.epochs, directory = args.result_dir)
 framework.train()
-framework.evaluate(dataloaders['test'])
+framework.evaluate(dataloaders['val'])

@@ -136,9 +136,9 @@ class DeepImagePrediction(object):
     def evaluate(self, test_loader, modelPath = None):
         if modelPath is not None:
             self.predictor.load_state_dict(torch.load(modelPath))
-            print('load SRgenerator model')
+            print('load predictor model')
         else:
-            self.predictor.load_state_dict(torch.load(self.modelPath + 'BestSRgenerator.pth'))
+            self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
             print('load BestSRgenerator ')
 
         since = time.time()
