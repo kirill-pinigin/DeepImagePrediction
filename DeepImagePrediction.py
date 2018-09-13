@@ -18,7 +18,7 @@ class DeepImagePrediction(object):
         self.num_epochs = num_epochs
         self.dataloaders = dataloaders
 
-        config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__)
+        config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) + '_' + str(predictor.norm1.__class__.__name__)
         config += '_' + str(criterion.__class__.__name__)
         config += "_" + str(optimizer.__class__.__name__) #+ "_lr_" + str( optimizer.param_groups[0]['lr'])
 
