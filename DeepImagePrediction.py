@@ -4,6 +4,8 @@ import os
 import torch
 from torch.autograd import Variable
 
+import torchvision
+import numpy as np
 LR_THRESHOLD = 1e-7
 TRYING_LR = 5
 DEGRADATION_TOLERANCY = 5
@@ -33,6 +35,13 @@ class DeepImagePrediction(object):
         if flag != True:
             os.makedirs(self.modelPath)
             print('os.makedirs("/modelPath/")')
+
+        self.images = os.path.join(directory, config + "/images/")
+        flag = os.path.exists(self.images)
+        if flag != True:
+            os.makedirs(self.images+'/bad/')
+            os.makedirs(self.images + '/good/')
+            print('os.makedirs("/images/")')
 
         self.report = open(reportPath  + '/' + config + "_Report.txt", "w")
         _stdout = sys.stdout
@@ -139,8 +148,9 @@ class DeepImagePrediction(object):
             print('load predictor model')
         else:
             self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
-            print('load BestSRgenerator ')
-
+            print('load BestPredictor ')
+        print(len(test_loader.dataset))
+        i = 0
         since = time.time()
         self.predictor.train(False)
         self.predictor.eval()
@@ -155,17 +165,19 @@ class DeepImagePrediction(object):
                 targets = Variable(targets.cuda())
             else:
                 inputs, targets = Variable(inputs), Variable(targets)
-
-            outputs = self.generator(inputs)
+            print(' targets ', targets.data[0])
+            outputs = self.predictor(inputs)
             loss = self.criterion(outputs, targets)
             running_loss += loss.data[0] * inputs.size(0)
-
+            i +=1
+            if float(outputs.data[0]) > float(0.8):
+                path = self.images + "/good/Input_OutPut_Target_" + str(i) +'_' + str(outputs.data[0]) + '.png'
+                torchvision.utils.save_image(inputs.data, path)
+            elif float(outputs.data[0]) < float(0.2):
+                path = self.images + "/bad/Input_OutPut_Target_" + str(i) + '_' + str(outputs.data[0]) + '.png'
+                torchvision.utils.save_image(inputs.data, path)
             _stdout = sys.stdout
             sys.stdout = self.report
-            print(' loss ', float(loss[0]))
-            self.report.flush()
-
-            sys.stdout = _stdout
             print(' loss ', float(loss[0]))
             self.report.flush()
 

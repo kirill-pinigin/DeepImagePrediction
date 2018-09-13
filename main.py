@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-from  ImagesRegressionCSVDataSet import  ImagesRegressionCSVDataSet , make_validation_split
+from  ImagesRegressionCSVDataSet import  ImagesRegressionCSVDataSet , make_dataloaders
 
 from DeepImagePrediction import DeepImagePrediction
 from SqueezePredictors import  SqueezePredictor, SqueezeResidualPredictor, SqueezeShuntPredictor
@@ -22,17 +22,17 @@ class SiLU(torch.nn.Module):
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
-parser.add_argument('--predictor',      type = str,   default='SqueezeResidualPredictor', help='type of image generator')
-parser.add_argument('--activation',     type = str,   default='ReLU', help='type of activation')
+parser.add_argument('--predictor',      type = str,   default='SqueezePredictor', help='type of image generator')
+parser.add_argument('--activation',     type = str,   default='SiLU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='MSE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default='1e-3')
 parser.add_argument('--dimension',       type = int,   default='1')
 parser.add_argument('--channels',       type = int,   default='3')
 parser.add_argument('--image_size',     type = int,   default='224')
-parser.add_argument('--batch_size',     type = int,   default='4')
+parser.add_argument('--batch_size',     type = int,   default='1')
 parser.add_argument('--epochs',         type = int,   default='101')
-parser.add_argument('--augmentation',   type = bool,  default='True', help='type of training')
+parser.add_argument('--augmentation',   type = bool,  default='False', help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default='True', help='type of training')
 
 args = parser.parse_args()
@@ -47,12 +47,12 @@ activation_types = {'ReLU'     : nn.ReLU(),
                     'PReLU'    : nn.PReLU(),
                     'ELU'      : nn.ELU(),
                     'SELU'     : nn.SELU(),
-                    'SiLU'     : SiLU
+                    'SiLU'     : SiLU()
               }
 
 criterion_types = {
                     'MSE': nn.MSELoss(),
-                    'L1' : nn.L1Loss()
+                    'L1' : nn.L1Loss(),
                     }
 
 optimizer_types = {
@@ -93,7 +93,7 @@ data_transforms = {
 
 image_datasets = ImagesRegressionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores.csv', channels = args.channels, transforms = data_transforms)
 
-dataloaders = make_validation_split(image_datasets, batch_size = args.batch_size, ratio = 0.2)
+dataloaders = make_dataloaders(image_datasets, batch_size = args.batch_size, splitratio = 0.1)
 
 framework = DeepImagePrediction(predictor = predictor, criterion = criterion, optimizer = optimizer, dataloaders = dataloaders, num_epochs=args.epochs, directory = args.result_dir)
 framework.train()

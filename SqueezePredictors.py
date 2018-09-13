@@ -5,6 +5,10 @@ from torchvision.models.squeezenet import Fire
 import torch.nn.init as init
 import torch.nn.functional as F
 
+LATENT_DIM = int(512)
+LATENT_DIM_2 = int(LATENT_DIM/2)
+
+
 class EmptyNorm(torch.nn.Module):
     def __init__(self):
         super(EmptyNorm, self).__init__()
@@ -61,20 +65,20 @@ class FireConvNorm(nn.Module):
 
 
 class SqueezePredictor(nn.Module):
-    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(), type_norm = 'batch', pretrained = True):
+    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(), type_norm = 'batch', pretrained = False):
         super(SqueezePredictor, self).__init__()
         self.activation = activation
         self.dimension = dimension
         if type_norm == 'instance':
             first_norm_layer = nn.InstanceNorm2d(96)
-            final_norm_layer = nn.InstanceNorm2d(dimension)
+            final_norm_layer = nn.InstanceNorm2d(LATENT_DIM)
         elif type_norm == 'batch':
             first_norm_layer = nn.BatchNorm2d(96)
-            final_norm_layer = nn.BatchNorm2d(dimension)
+            final_norm_layer = nn.BatchNorm2d(LATENT_DIM)
         else:
             first_norm_layer = EmptyNorm()
             final_norm_layer = EmptyNorm()
-        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2),
+        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2)
         self.norm1 = first_norm_layer
         self.downsample1 = nn.MaxPool2d(kernel_size=3, stride=2)
         self.fire1 = FireConvNorm(96, 16, 64, 64, activation=activation, type_norm=type_norm)
@@ -139,16 +143,21 @@ class SqueezePredictor(nn.Module):
                     if m.bias is not None:
                         init.constant(m.bias, 0)
 
-        final_conv = nn.Conv2d(512, 1, kernel_size=1)
+        final_conv = nn.Conv2d(512, LATENT_DIM, kernel_size=1)
         init.normal(final_conv.weight, mean=0.0, std=0.01)
         init.constant(final_conv.bias, 0)
 
-        self.predictor = nn.Sequential(
+        self.conv_perceptron = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
             final_norm_layer,
             activation,
             nn.AdaptiveAvgPool2d(output_size=1),
+        )
+        self.predictor = nn.Sequential(
+            nn.Linear(LATENT_DIM, LATENT_DIM_2),
+            activation,
+            nn.Linear(LATENT_DIM_2, dimension),
         )
 
     def forward(self, x):
@@ -166,8 +175,10 @@ class SqueezePredictor(nn.Module):
         x = self.fire7(x)
         x = self.downsample3(x)
         x = self.fire8(x)
+        x = self.conv_perceptron(x)
+        x = x.view(x.size(0), -1)
         x = self.predictor(x)
-        return x.view(x.size(0), self.dimension)
+        return x
 
 
 class SqueezeResidualPredictor(nn.Module):
@@ -177,14 +188,14 @@ class SqueezeResidualPredictor(nn.Module):
         self.dimension = dimension
         if type_norm == 'instance':
             first_norm_layer = nn.InstanceNorm2d(96)
-            final_norm_layer = nn.InstanceNorm2d(dimension)
+            final_norm_layer = nn.InstanceNorm2d(LATENT_DIM)
         elif type_norm == 'batch':
             first_norm_layer = nn.BatchNorm2d(96)
-            final_norm_layer = nn.BatchNorm2d(dimension)
+            final_norm_layer = nn.BatchNorm2d(LATENT_DIM)
         else:
             first_norm_layer = EmptyNorm()
             final_norm_layer = EmptyNorm()
-        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2),
+        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2)
         self.norm1 = first_norm_layer
         self.downsample1 = nn.MaxPool2d(kernel_size=3, stride=2)
         self.fire1 = FireConvNorm(96, 16, 64, 64, activation=activation, type_norm=type_norm)
@@ -249,16 +260,21 @@ class SqueezeResidualPredictor(nn.Module):
                     if m.bias is not None:
                         init.constant(m.bias, 0)
 
-        final_conv = nn.Conv2d(512, 1, kernel_size=1)
+        final_conv = nn.Conv2d(512, LATENT_DIM, kernel_size=1)
         init.normal(final_conv.weight, mean=0.0, std=0.01)
         init.constant(final_conv.bias, 0)
 
-        self.predictor = nn.Sequential(
+        self.conv_perceptron = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
             final_norm_layer,
             activation,
             nn.AdaptiveAvgPool2d(output_size=1),
+        )
+        self.predictor = nn.Sequential(
+            nn.Linear(LATENT_DIM, LATENT_DIM_2),
+            activation,
+            nn.Linear(LATENT_DIM_2, dimension),
         )
 
     def forward(self, x):
@@ -281,25 +297,27 @@ class SqueezeResidualPredictor(nn.Module):
         d3 = self.downsample3(x)
         x = self.fire8(d3)
         x = torch.add(x, d3)
+        x = self.conv_perceptron(x)
+        x = x.view(x.size(0), -1)
         x = self.predictor(x)
-        return x.view(x.size(0), self.dimension)
+        return x
 
 
 class SqueezeShuntPredictor(nn.Module):
-    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(),  type_norm = 'batch', pretrained = True):
+    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(),  type_norm = 'batch', pretrained = False):
         super(SqueezeShuntPredictor, self).__init__()
         self.activation = activation
         self.dimension = dimension
         if type_norm == 'instance':
             first_norm_layer = nn.InstanceNorm2d(96)
-            final_norm_layer = nn.InstanceNorm2d(dimension)
+            final_norm_layer = nn.InstanceNorm2d(LATENT_DIM)
         elif type_norm == 'batch':
             first_norm_layer = nn.BatchNorm2d(96)
-            final_norm_layer = nn.BatchNorm2d(dimension)
+            final_norm_layer = nn.BatchNorm2d(LATENT_DIM)
         else:
             first_norm_layer = EmptyNorm()
             final_norm_layer = EmptyNorm()
-        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2),
+        self.conv1 = nn.Conv2d(channels, 96, kernel_size=7, stride=2)
         self.norm1 = first_norm_layer
         self.downsample1 = nn.MaxPool2d(kernel_size=3, stride=2)
         self.shunt1 = nn.Sequential(nn.ReLU(), nn.Conv2d(96,128, kernel_size=1), nn.Sigmoid())
@@ -368,16 +386,21 @@ class SqueezeShuntPredictor(nn.Module):
                     if m.bias is not None:
                         init.constant(m.bias, 0)
 
-        final_conv = nn.Conv2d(512, 1, kernel_size=1)
+        final_conv = nn.Conv2d(512, LATENT_DIM, kernel_size=1)
         init.normal(final_conv.weight, mean=0.0, std=0.01)
         init.constant(final_conv.bias, 0)
 
-        self.predictor = nn.Sequential(
+        self.conv_perceptron = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
             final_norm_layer,
             activation,
             nn.AdaptiveAvgPool2d(output_size=1),
+        )
+        self.predictor = nn.Sequential(
+            nn.Linear(LATENT_DIM, LATENT_DIM_2),
+            activation,
+            nn.Linear(LATENT_DIM_2, dimension),
         )
 
     def forward(self, x):
@@ -407,5 +430,7 @@ class SqueezeShuntPredictor(nn.Module):
         d3 = self.downsample3(x)
         x = self.fire8(d3)
         x = torch.add(x, d3)
+        x = self.conv_perceptron(x)
+        x = x.view(x.size(0), -1)
         x = self.predictor(x)
-        return x.view(x.size(0), self.dimension)
+        return x
