@@ -142,7 +142,7 @@ class DeepImagePrediction(object):
         print('Best val best_loss: {:4f}'.format(best_loss))
         return best_loss
 
-    def evaluate(self, test_loader, modelPath = None):
+    def evaluate(self, test_loader, modelPath=None):
         if modelPath is not None:
             self.predictor.load_state_dict(torch.load(modelPath))
             print('load predictor model')
@@ -165,21 +165,23 @@ class DeepImagePrediction(object):
                 targets = Variable(targets.cuda())
             else:
                 inputs, targets = Variable(inputs), Variable(targets)
-            print(' targets ', targets.data[0])
             outputs = self.predictor(inputs)
             loss = self.criterion(outputs, targets)
             running_loss += loss.data[0] * inputs.size(0)
-            i +=1
+            print(' targets ', float(targets.data[0]), ' outputs ', float(outputs.data[0]), ' loss ', float(loss.data[0]))
+            i += 1
             if float(outputs.data[0]) > float(0.8):
-                path = self.images + "/good/Input_OutPut_Target_" + str(i) +'_' + str(outputs.data[0]) + '.png'
+                path = self.images + "/good/Input_OutPut_Target_" + str(i) + '_' + str(outputs.data[0]) + '.png'
                 torchvision.utils.save_image(inputs.data, path)
             elif float(outputs.data[0]) < float(0.2):
                 path = self.images + "/bad/Input_OutPut_Target_" + str(i) + '_' + str(outputs.data[0]) + '.png'
                 torchvision.utils.save_image(inputs.data, path)
             _stdout = sys.stdout
             sys.stdout = self.report
-            print(' loss ', float(loss[0]))
+            print(
+            ' targets ', float(targets.data[0]), ' outputs ', float(outputs.data[0]), ' loss ', float(loss.data[0]))
             self.report.flush()
+            sys.stdout = _stdout
 
         epoch_loss = float(running_loss) / float(len(test_loader.dataset))
 

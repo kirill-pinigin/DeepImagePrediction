@@ -47,7 +47,8 @@ class ImagesRegressionCSVDataSet(Dataset):
         img_as_img = load_image(single_image_name)
         image = self.transforms[self.phase](img_as_img)
         target = torch.FloatTensor(1)
-        target[0] = float((self.label_arr[index] - self.mean)/(self.std))
+        target[0] = float((self.label_arr[index] - self.min)/(self.max - self.min))
+        #target[0] = float(self.label_arr[index] )
         return image, target
 
     def __len__(self):
@@ -55,29 +56,21 @@ class ImagesRegressionCSVDataSet(Dataset):
 
 
 def make_dataloaders (dataset, batch_size, splitratio = 0.2):
-    if float(splitratio) > float(0):
-        print(' split ratio ' , splitratio)
-        dataset_size = len(dataset)
-        indices = list(range(dataset_size))
-        split = int(np.floor(splitratio * dataset_size))
-        np.random.seed(42)
-        np.random.shuffle(indices)
-        train_indices, val_indices = indices[split:], indices[:split]
-        #print(train_indices, val_indices)
-        train_sampler = SubsetRandomSampler(train_indices)
-        valid_sampler = SubsetRandomSampler(val_indices)
-        print(train_sampler, valid_sampler)
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size , num_workers=4,
-                                                   sampler=train_sampler)
-        validation_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=4,
-                                                        sampler=valid_sampler)
-        print(train_loader, validation_loader)
-        dataloaders = {'train' : train_loader, 'val' : validation_loader}
-
-    else:
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=4,
-                                                   shuffle = True)
-        validation_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=4,
-                                                   shuffle=False)
-        dataloaders = {'train': train_loader, 'val': validation_loader}
+    print(' split ratio ', splitratio)
+    dataset_size = len(dataset)
+    indices = list(range(dataset_size))
+    split = int(np.floor(splitratio * dataset_size))
+    np.random.seed(42)
+    np.random.shuffle(indices)
+    train_indices, val_indices = indices[split:], indices[:split]
+    # print(train_indices, val_indices)
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+    print(train_sampler, valid_sampler)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=4,
+                                               sampler=train_sampler)
+    validation_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=4,
+                                                    sampler=valid_sampler)
+    print(train_loader, validation_loader)
+    dataloaders = {'train': train_loader, 'val': validation_loader}
     return dataloaders

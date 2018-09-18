@@ -8,29 +8,21 @@ import torchvision.transforms as transforms
 from  ImagesRegressionCSVDataSet import  ImagesRegressionCSVDataSet , make_dataloaders
 
 from DeepImagePrediction import DeepImagePrediction
-from SqueezePredictors import  SqueezePredictor, SqueezeResidualPredictor, SqueezeShuntPredictor
-
-class SiLU(torch.nn.Module):
-    def __init__(self):
-        super(SiLU, self).__init__()
-
-    def forward(self, x):
-        out = torch.mul(x, F.sigmoid(x))
-        return out
-
+from SqueezePredictors import  SqueezePredictor, SqueezeResidualPredictor, SqueezeShuntPredictor, SiLU
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
-parser.add_argument('--predictor',      type = str,   default='SqueezePredictor', help='type of image generator')
+parser.add_argument('--predictor',      type = str,   default='SqueezeShuntPredictor', help='type of image generator')
 parser.add_argument('--activation',     type = str,   default='SiLU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='MSE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default='1e-3')
+parser.add_argument('--split',          type = float, default='0.2')
 parser.add_argument('--dimension',       type = int,   default='1')
 parser.add_argument('--channels',       type = int,   default='3')
 parser.add_argument('--image_size',     type = int,   default='224')
-parser.add_argument('--batch_size',     type = int,   default='1')
+parser.add_argument('--batch_size',     type = int,   default='16')
 parser.add_argument('--epochs',         type = int,   default='101')
 parser.add_argument('--augmentation',   type = bool,  default='False', help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default='True', help='type of training')
@@ -91,9 +83,14 @@ data_transforms = {
     'test':     transforms.Compose(testing_transforms_list)
 }
 
-image_datasets = ImagesRegressionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores.csv', channels = args.channels, transforms = data_transforms)
+image_dataset = ImagesRegressionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores.csv', channels = args.channels, transforms = data_transforms)
 
-dataloaders = make_dataloaders(image_datasets, batch_size = args.batch_size, splitratio = 0.1)
+if args.split > float(0.0):
+    dataloaders = make_dataloaders(image_dataset, batch_size = args.batch_size, splitratio = 0.2)
+else:
+    train_loader = torch.utils.data.DataLoader(image_dataset, batch_size=args.batch_size, num_workers=4, shuffle= True)
+    val_loader = torch.utils.data.DataLoader(image_dataset, batch_size=args.batch_size, num_workers=4, shuffle= False)
+    dataloaders = {'train' : train_loader , 'val' : val_loader}
 
 framework = DeepImagePrediction(predictor = predictor, criterion = criterion, optimizer = optimizer, dataloaders = dataloaders, num_epochs=args.epochs, directory = args.result_dir)
 framework.train()

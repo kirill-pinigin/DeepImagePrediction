@@ -5,8 +5,17 @@ from torchvision.models.squeezenet import Fire
 import torch.nn.init as init
 import torch.nn.functional as F
 
-LATENT_DIM = int(512)
-LATENT_DIM_2 = int(LATENT_DIM/2)
+LATENT_DIM = int(1000)
+LATENT_DIM_2 = int(LATENT_DIM // 2) if LATENT_DIM > 2 else 1
+
+
+class SiLU(torch.nn.Module):
+    def __init__(self):
+        super(SiLU, self).__init__()
+
+    def forward(self, x):
+        out = torch.mul(x, F.sigmoid(x))
+        return out
 
 
 class EmptyNorm(torch.nn.Module):
@@ -65,7 +74,7 @@ class FireConvNorm(nn.Module):
 
 
 class SqueezePredictor(nn.Module):
-    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(), type_norm = 'batch', pretrained = False):
+    def __init__(self, channels= 3, dimension = 1, activation = nn.ReLU(), type_norm = 'batch', pretrained = True):
         super(SqueezePredictor, self).__init__()
         self.activation = activation
         self.dimension = dimension
