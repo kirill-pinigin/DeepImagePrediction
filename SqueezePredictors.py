@@ -345,7 +345,17 @@ class SqueezeShuntPredictor(nn.Module):
         self.fire8 = FireConvNorm(512, 64, 256, 256, activation=activation, type_norm=type_norm)
         if pretrained:
             model = models.squeezenet1_0(pretrained=True).features
-            if channels == 3:
+            if channels == 1:
+                conv = nn.Conv2d(1, channels, kernel_size=7, stride=2)
+                weight = torch.FloatTensor(96, 1, 7, 7)
+                parameters = list(model.parameters())
+                for i in range(channels):
+                    weight[i, :, :, :] = parameters[0].data[i].mean(0)
+                    bias = parameters[1].data
+                conv.weight.data.copy_(weight)
+                conv.bias.data.copy_(bias)
+                self.conv1 = conv
+            else:
                 self.conv1 = model[0]
 
             self.fire1.squeeze = model[3].squeeze

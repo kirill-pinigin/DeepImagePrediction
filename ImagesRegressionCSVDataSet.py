@@ -13,16 +13,17 @@ def is_image_file(filename):
     return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
 def load_image(filepath, channels = 3):
-    if channels == 3:
-        image = Image.open(filepath).convert('RGB')
-    else:
+    if channels == 1:
         image = Image.open(filepath).convert('YCbCr')
         image, _, _ = image.split()
+    else:
+        image = Image.open(filepath).convert('RGB')
     return image
 
 class ImagesRegressionCSVDataSet(Dataset):
     def __init__(self, dir, csv_path, channels, transforms):
         self.root_dir = dir
+        self.channels = channels
         self.transforms = transforms
         self.data_info = pd.read_csv(csv_path, header=0)
         self.image_arr = np.asarray(self.data_info.iloc[:, 0])
@@ -44,7 +45,7 @@ class ImagesRegressionCSVDataSet(Dataset):
 
     def __getitem__(self, index):
         single_image_name = os.path.join(self.root_dir,self.image_arr[index])
-        img_as_img = load_image(single_image_name)
+        img_as_img = load_image(single_image_name, self.channels)
         image = self.transforms[self.phase](img_as_img)
         target = torch.FloatTensor(1)
         target[0] = float((self.label_arr[index] - self.min)/(self.max - self.min))
