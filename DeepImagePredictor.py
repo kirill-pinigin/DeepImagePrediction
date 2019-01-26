@@ -20,6 +20,7 @@ class DeepImagePredictor(object):
     def __init__(self, predictor,  criterion, optimizer, directory):
         self.predictor = predictor
         self.criterion = criterion
+        self.accuracy = torch.nn.L1Loss()
         self.optimizer = optimizer
         self.use_gpu = torch.cuda.is_available()
         config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) #+ '_' + str(predictor.norm1.__class__.__name__)
@@ -61,7 +62,7 @@ class DeepImagePredictor(object):
     def __del__(self):
         self.report.close()
 
-    def fit(self, dataloaders, num_epochs = 20, resume_train = False):
+    def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
         if resume_train and os.path.isfile(self.modelPath + 'Bestpredictor.pth'):
             print( "RESUME training load Bestpredictor")
             self.predictor.load_state_dict(torch.load(self.modelPath + 'Bestpredictor.pth'))
@@ -100,14 +101,14 @@ class DeepImagePredictor(object):
                     self.optimizer.zero_grad()
 
                     outputs = self.predictor(inputs)
-                    diff = torch.abs(targets.data - (outputs.data))
+                    diff = self.accuracy(outputs, targets)
                     loss = self.criterion(outputs, targets)
                     if phase == 'train':
                         loss.backward()
                         self.optimizer.step()
 
                     running_loss += loss.item() * inputs.size(0)
-                    running_corrects += (torch.sum(diff)/float(diff.shape[1]*diff.shape[0])) * inputs.size(0)
+                    running_corrects += diff.item() * inputs.size(0)
 
                 epoch_loss = float(running_loss) / float(len(dataloaders[phase].dataset))
                 epoch_acc = float(running_corrects) / float(len(dataloaders[phase].dataset))

@@ -33,23 +33,17 @@ class ImagesRegressionCSVDataSet(Dataset):
         self.max = float(np.max(self.label_arr))
         print(np.min(self.label_arr))
         self.min = float(np.min(self.label_arr))
-
         print(np.mean(self.label_arr))
         self.mean = float(np.mean(self.label_arr))
-
         print(np.std(self.label_arr))
         self.std = float(np.std(self.label_arr))
-
         self.data_len = len(self.data_info.index)
-        self.phase = 'train'
 
     def __getitem__(self, index):
         single_image_name = os.path.join(self.root_dir,self.image_arr[index])
         img_as_img = load_image(single_image_name, self.channels)
-        image = self.transforms[self.phase](img_as_img)
+        image = self.transforms(img_as_img)
         target = torch.FloatTensor([float(self.label_arr[index] )])
-        #target[0] = float((self.label_arr[index] - self.min)/(self.max - self.min))
-        #target[0] = float(self.label_arr[index] )
         return image, target
 
     def __len__(self):

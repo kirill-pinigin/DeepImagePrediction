@@ -1,19 +1,10 @@
 import torch
 import torch.nn as nn
 from torchvision import models
-
-
-class SiLU(torch.nn.Module):
-    def __init__(self, inplace=False):
-        super(SiLU, self).__init__()
-
-    def forward(self, x):
-        out = torch.mul(x, torch.sigmoid(x))
-        return out
-
+from NeuralModels import SILU, Perceptron
 
 class ResidualPredictor(nn.Module):
-    def __init__(self, channels = 1, dimension=11, activation = SiLU(), pretrained = True):
+    def __init__(self, channels = 1, dimension=11, activation = SILU(), pretrained = True):
         super(ResidualPredictor, self).__init__()
         self.activation = activation
 
@@ -33,10 +24,9 @@ class ResidualPredictor(nn.Module):
         num_ftrs = self.model.fc.in_features
 
         self.model.fc = nn.Sequential(
-            nn.Linear(num_ftrs, num_ftrs),
+            Perceptron(num_ftrs, num_ftrs),
             activation,
-            nn.Dropout(p=0.5),
-            nn.Linear(num_ftrs, dimension),
+            Perceptron(num_ftrs, dimension),
         )
 
     def forward(self, x):

@@ -3,17 +3,10 @@ import torch.nn as nn
 from torchvision import  models
 import torch.nn.init as init
 
+from NeuralModels import SILU, Perceptron
+
 LATENT_DIM = int(512)
 LATENT_DIM_2 = int(LATENT_DIM // 2) if LATENT_DIM > 2 else 1
-
-
-class SiLU(torch.nn.Module):
-    def __init__(self):
-        super(SiLU, self).__init__()
-
-    def forward(self, x):
-        out = torch.mul(x, torch.sigmoid(x))
-        return out
 
 
 class FireConvNorm(nn.Module):
@@ -118,12 +111,10 @@ class SqueezeSimplePredictor(nn.Module):
                         init.constant(m.bias, 0)
 
         self.predictor = nn.Sequential(
-            nn.Dropout(p=0.5),
             nn.Conv2d(LATENT_DIM, dimension, kernel_size=1),
             final_norm_layer,
             activation,
             nn.AvgPool2d(kernel_size=12,stride=1),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -169,7 +160,6 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
         final_norm_layer = nn.BatchNorm2d(LATENT_DIM)
 
         self.features = nn.Sequential(
-            nn.Dropout(p=0.5),
             nn.Conv2d(LATENT_DIM, LATENT_DIM, kernel_size=1),
             final_norm_layer,
             activation,
@@ -180,11 +170,9 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
         sub_dimension = reduce_number if reduce_number > dimension else (reduce_number + dimension)
 
         self.predictor = nn.Sequential(
-            nn.Linear(LATENT_DIM, sub_dimension),
+            Perceptron(LATENT_DIM, sub_dimension),
             activation,
-            nn.Dropout(p=0.5),
-            nn.Linear(sub_dimension, dimension),
-            nn.Sigmoid(),
+            Perceptron(sub_dimension, dimension),
         )
 
     def forward(self, x):
@@ -208,7 +196,6 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
         x = self.fire8(d3)
         x = torch.add(x, d3)
         x = self.features(x)
-        x = x.view(x.size(0), -1)
         x = self.predictor(x)
         return x
 
@@ -245,6 +232,5 @@ class SqueezeShuntPredictor(SqueezeResidualPredictor):
         d3 = self.downsample3(x)
         x = self.fire8(d3)
         x = self.features(x)
-        x = x.view(x.size(0), -1)
         x = self.predictor(x)
         return x
