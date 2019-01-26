@@ -47,8 +47,8 @@ class ImagesRegressionCSVDataSet(Dataset):
         single_image_name = os.path.join(self.root_dir,self.image_arr[index])
         img_as_img = load_image(single_image_name, self.channels)
         image = self.transforms[self.phase](img_as_img)
-        target = torch.FloatTensor(1)
-        target[0] = float((self.label_arr[index] - self.min)/(self.max - self.min))
+        target = torch.FloatTensor([float(self.label_arr[index] )])
+        #target[0] = float((self.label_arr[index] - self.min)/(self.max - self.min))
         #target[0] = float(self.label_arr[index] )
         return image, target
 
