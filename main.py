@@ -16,16 +16,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
 parser.add_argument('--predictor',      type = str,   default='ResidualPredictor', help='type of image generator')
-parser.add_argument('--activation',     type = str,   default='SiLU', help='type of activation')
+parser.add_argument('--activation',     type = str,   default='SILU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='MSE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--lr',             type = float, default='1e-3')
-parser.add_argument('--batch_size',     type = int,   default='16')
-parser.add_argument('--epochs',         type = int,   default='101')
-parser.add_argument('--resume_train',   type = bool,  default='True', help='type of training')
-parser.add_argument('--pretrained',     type = bool,  default='True', help='type of training')
+parser.add_argument('--lr',             type = float, default=1e-3)
+parser.add_argument('--batch_size',     type = int,   default=32)
+parser.add_argument('--epochs',         type = int,   default=101)
+parser.add_argument('--resume_train',   type = bool,  default=False, help='type of training')
+parser.add_argument('--pretrained',     type = bool,  default=True, help='type of training')
 
 args = parser.parse_args()
+print(args)
 
 predictor_types = { 'ResidualPredictor'                 : ResidualPredictor,
                     'SqueezeSimplePredictor'            : SqueezeSimplePredictor,
@@ -44,7 +45,6 @@ activation_types = {'ReLU'     : nn.ReLU(),
 criterion_types = {
                     'MSE' : nn.MSELoss(),
                     'L1'  : nn.L1Loss(),
-                    'BCE' : nn.BCEWithLogitsLoss()
                     }
 
 optimizer_types = {

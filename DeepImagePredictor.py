@@ -8,7 +8,7 @@ import numpy as np
 
 IMAGE_SIZE = 224
 CHANNELS = 3
-DIMENSION = 80
+DIMENSION = 1
 
 LR_THRESHOLD = 1e-7
 TRYING_LR = 5
@@ -24,8 +24,6 @@ class DeepImagePredictor(object):
         self.optimizer = optimizer
         self.use_gpu = torch.cuda.is_available()
         config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) #+ '_' + str(predictor.norm1.__class__.__name__)
-        if str(predictor.__class__.__name__) == 'ResidualPredictor':
-            config += str(predictor.model.conv1)
         config += '_' + str(criterion.__class__.__name__)
         config += "_" + str(optimizer.__class__.__name__) #+ "_lr_" + str( optimizer.param_groups[0]['lr'])
 
@@ -63,9 +61,9 @@ class DeepImagePredictor(object):
         self.report.close()
 
     def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
-        if resume_train and os.path.isfile(self.modelPath + 'Bestpredictor.pth'):
+        if resume_train and os.path.isfile(self.modelPath + 'BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
-            self.predictor.load_state_dict(torch.load(self.modelPath + 'Bestpredictor.pth'))
+            self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
         maximum = dataloaders['train'].dataset.max
         since = time.time()
         best_loss = 10000.0
