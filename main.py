@@ -66,7 +66,7 @@ criterion = (criterion_types[args.criterion] if args.criterion in criterion_type
 
 train_transforms_list = [
         transforms.Resize((IMAGE_SIZE, IMAGE_SIZE), interpolation=3),
-        #transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
+        transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
         transforms.ToTensor(),
         ]
 

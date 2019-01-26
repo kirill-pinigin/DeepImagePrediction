@@ -4,7 +4,7 @@ from torchvision import models
 from NeuralModels import SILU, Perceptron
 
 LATENT = 512
-REDUCTION = 7
+REDUCTION = 8
 FEATURES = 64
 
 

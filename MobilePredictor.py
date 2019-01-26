@@ -164,9 +164,9 @@ class MobilePredictor(nn.Module):
 
         self.predictor = nn.Sequential(
             activation,
-            Perceptron(1280, 1280 / 2),
+            Perceptron(1280, 1280),
             activation,
-            Perceptron( 1280 / 2, dimension),
+            Perceptron( 1280, dimension),
         )
 
     def forward(self, x):

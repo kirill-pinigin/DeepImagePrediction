@@ -29,13 +29,13 @@ class ImagesRegressionCSVDataSet(Dataset):
         self.image_arr = np.asarray(self.data_info.iloc[:, 0])
         self.label_arr = np.asarray(self.data_info.iloc[:, 1])
 
-        print(np.max(self.label_arr))
+        print('maximum value = ', np.max(self.label_arr))
         self.max = float(np.max(self.label_arr))
-        print(np.min(self.label_arr))
+        print('minimum value = ', np.min(self.label_arr))
         self.min = float(np.min(self.label_arr))
-        print(np.mean(self.label_arr))
+        print('average value = ', np.mean(self.label_arr))
         self.mean = float(np.mean(self.label_arr))
-        print(np.std(self.label_arr))
+        print('dispersion value = ', np.std(self.label_arr))
         self.std = float(np.std(self.label_arr))
         self.data_len = len(self.data_info.index)
 
