@@ -101,7 +101,7 @@ class DeepImagePredictor(object):
 
                     outputs = self.predictor(inputs)
                     diff = self.accuracy(outputs, targets)
-                    diff = float(1.0) - diff / self.dispersion
+                    #diff = float(1.0) - diff / self.dispersion
                     loss = self.criterion(outputs, targets)
                     if phase == 'train':
                         loss.backward()
@@ -115,12 +115,12 @@ class DeepImagePredictor(object):
 
                 _stdout = sys.stdout
                 sys.stdout = self.report
-                print('{} Loss: {:.4f} Accuracy {:.4f} '.format(
+                print('{} Loss: {:.4f} Accuracy Mean Absolute Error {:.4f} '.format(
                     phase, epoch_loss, epoch_acc))
                 self.report.flush()
 
                 sys.stdout = _stdout
-                print('{} Loss: {:.4f} Accuracy {:.4f} '.format(
+                print('{} Loss: {:.4f} Accuracy Mean Absolute Error {:.4f} '.format(
                     phase, epoch_loss, epoch_acc))
                 self.report.flush()
 
@@ -182,7 +182,7 @@ class DeepImagePredictor(object):
 
             outputs = self.predictor(inputs)
             diff = self.accuracy(outputs, targets)
-            diff = float(1.0) - diff / self.dispersion
+            #diff = float(1.0) - diff / self.dispersion
             loss = self.criterion(outputs, targets)
             running_loss += loss.item() * inputs.size(0)
             running_corrects += diff.item() * inputs.size(0)
