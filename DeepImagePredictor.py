@@ -23,6 +23,7 @@ class DeepImagePredictor(object):
         self.accuracy = torch.nn.L1Loss()
         self.optimizer = optimizer
         self.use_gpu = torch.cuda.is_available()
+        self.dispersion = 1.0
         config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) #+ '_' + str(predictor.norm1.__class__.__name__)
         config += '_' + str(criterion.__class__.__name__)
         config += "_" + str(optimizer.__class__.__name__) #+ "_lr_" + str( optimizer.param_groups[0]['lr'])
@@ -64,7 +65,7 @@ class DeepImagePredictor(object):
         if resume_train and os.path.isfile(self.modelPath + 'BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
             self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
-        maximum = dataloaders['train'].dataset.max
+            self.dispersion = dataloaders['train'].dataset.std
         since = time.time()
         best_loss = 10000.0
         best_acc = 0.0
@@ -100,6 +101,7 @@ class DeepImagePredictor(object):
 
                     outputs = self.predictor(inputs)
                     diff = self.accuracy(outputs, targets)
+                    diff = float(1.0) - diff / self.dispersion
                     loss = self.criterion(outputs, targets)
                     if phase == 'train':
                         loss.backward()
@@ -153,7 +155,6 @@ class DeepImagePredictor(object):
 
 
     def evaluate(self, test_loader, isSaveImages = True, modelPath=None):
-        tags = test_loader.dataset.tags()
         counter = 0
         if modelPath is not None:
             self.predictor.load_state_dict(torch.load(modelPath))
@@ -180,10 +181,14 @@ class DeepImagePredictor(object):
                 inputs, targets = Variable(inputs), Variable(targets)
 
             outputs = self.predictor(inputs)
-            diff = torch.abs(targets.data - torch.round(outputs.data))
+            diff = self.accuracy(outputs, targets)
+            diff = float(1.0) - diff / self.dispersion
             loss = self.criterion(outputs, targets)
             running_loss += loss.item() * inputs.size(0)
-            running_corrects += (1.0 - torch.sum(diff) / float(diff.shape[1] * diff.shape[0])) * inputs.size(0)
+            running_corrects += diff.item() * inputs.size(0)
+            #print('output = ', float(outputs.item()), 'targets = ', float(targets.item()))
+            #print('diff = ', float(diff.item()))
+
 
             if isSaveImages and test_loader.batch_size == 1:
                 result = torch.round(outputs).data.cpu().numpy()
@@ -192,12 +197,13 @@ class DeepImagePredictor(object):
                 image = inputs.clone()
                 image = image.data.cpu().float()
                 counter = counter + 1
-                filename = self.images + '/' + str(counter)
-                labels = tags[indexes]
-                for l in labels:
-                    filename += '_' + str(l) + '_'
-                filename+='.png'
-                torchvision.utils.save_image(image, filename)
+                if float(diff.item()) > 0.5:
+                    filename = self.images + '/bad/'
+                else:
+                    filename = self.images + '/good/'
+
+                filename+= str(counter) + "__" + str(float(diff.item()))+'__.png'
+                #torchvision.utils.save_image(image, filename)
 
         epoch_loss = float(running_loss) / float(len(test_loader.dataset))
         epoch_acc = float(running_corrects) / float(len(test_loader.dataset))
