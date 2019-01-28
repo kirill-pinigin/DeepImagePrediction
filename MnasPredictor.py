@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from NeuralModels import SILU, Perceptron
-from DeepImagePredictor import IMAGE_SIZE
+from DeepImagePrediction import IMAGE_SIZE
 
 import math
 

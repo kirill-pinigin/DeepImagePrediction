@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from NeuralModels import SILU, Perceptron
-from DeepImagePredictor import IMAGE_SIZE
+from DeepImagePrediction import IMAGE_SIZE
 
 import math
 
@@ -130,7 +130,7 @@ def download_file(url, local_filename, chunk_size=1024):
 def mobile_net_v2(dimension=1000, channels = 3, input_size=224, width_mult=1., pretrained = True):
     model = MobileNetV2(input_size=input_size)
     if pretrained:
-        path_to_model = '/tmp/mobilenetv2.pth.tar'
+        path_to_model = './mobilenetv2.pth.tar'
         if not os.path.exists(path_to_model):
             path_to_model = download_file(MOBILE_NET_V2_UTR, path_to_model)
         state_dict = torch.load(path_to_model, map_location=lambda storage, loc: storage)
