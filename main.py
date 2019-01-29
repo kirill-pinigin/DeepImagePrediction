@@ -18,13 +18,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
 parser.add_argument('--predictor',      type = str,   default='MobilePredictor', help='type of image generator')
-parser.add_argument('--activation',     type = str,   default='ReLU', help='type of activation')
+parser.add_argument('--activation',     type = str,   default='SILU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='BCE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default=1e-3)
 parser.add_argument('--l2',             type = float, default=1e-3)
 parser.add_argument('--dropout',        type = float, default=0)
-parser.add_argument('--batch_size',     type = int,   default=32)
+parser.add_argument('--batch_size',     type = int,   default=16)
 parser.add_argument('--epochs',         type = int,   default=64)
 parser.add_argument('--resume_train',   type = bool,  default=True, help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default=True, help='type of training')
@@ -88,8 +88,8 @@ data_transforms = {
     'val':      transforms.Compose(val_transforms_list),
 }
 
-train_dataset = ImagesRegressionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores_train.csv', channels = CHANNELS, transforms = data_transforms['train'])
-val_dataset   = ImagesRegressionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores_val.csv',   channels = CHANNELS, transforms = data_transforms['val'])
+train_dataset = ImagePredictionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores_train.csv', channels = CHANNELS, transforms = data_transforms['train'])
+val_dataset   = ImagePredictionCSVDataSet(os.path.join(args.data_dir, 'images'), csv_path = args.data_dir + 'scores_val.csv',   channels = CHANNELS, transforms = data_transforms['val'])
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=4, shuffle= True)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4, shuffle= False)
