@@ -100,8 +100,8 @@ framework = DeepImagePrediction(predictor = predictor, criterion = criterion, op
 
 if args.transfer:
     framework.predictor.freeze()
-    #framework.optimizer = (optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr / 10.0)
-    #framework.approximate(dataloaders=dataloaders, num_epochs= int(args.epochs / 2) if int(args.epochs / 2) < 12 else 12, resume_train=args.resume_train, dropout_factor=args.dropout)
+    framework.optimizer = (optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr / 10.0)
+    framework.approximate(dataloaders=dataloaders, num_epochs= int(args.epochs / 2) if int(args.epochs / 2) < 12 else 12, resume_train=args.resume_train, dropout_factor=args.dropout)
     framework.predictor.unfreeze()
 
 framework.approximate(dataloaders = dataloaders, num_epochs=args.epochs, resume_train=args.resume_train, dropout_factor=args.dropout)
