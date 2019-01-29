@@ -20,6 +20,9 @@ def load_image(filepath, channels = 3):
         image = Image.open(filepath).convert('RGB')
     return image
 
+MAXIMUM_VALUE = float(88.39)
+MINIMUM_VALUE = float(3.91)
+
 class ImagesRegressionCSVDataSet(Dataset):
     def __init__(self, dir, csv_path, channels, transforms):
         self.root_dir = dir
@@ -27,8 +30,21 @@ class ImagesRegressionCSVDataSet(Dataset):
         self.transforms = transforms
         self.data_info = pd.read_csv(csv_path, header=0)
         self.image_arr = np.asarray(self.data_info.iloc[:, 0])
-        self.label_arr = np.asarray(self.data_info.iloc[:, 1])
+        self.label_arr = np.asarray(self.data_info.iloc[:, 2])
+        self.data_len = len(self.data_info.index)
+        self.statistics()
 
+    def __getitem__(self, index):
+        single_image_name = os.path.join(self.root_dir,self.image_arr[index])
+        img_as_img = load_image(single_image_name, self.channels)
+        image = self.transforms(img_as_img)
+        target = torch.FloatTensor([float((self.label_arr[index] - MINIMUM_VALUE)/(MAXIMUM_VALUE - MINIMUM_VALUE))])
+        return image, target
+
+    def __len__(self):
+        return self.data_len
+
+    def statistics(self):
         print('maximum value = ', np.max(self.label_arr))
         self.max = float(np.max(self.label_arr))
         print('minimum value = ', np.min(self.label_arr))
@@ -37,17 +53,6 @@ class ImagesRegressionCSVDataSet(Dataset):
         self.mean = float(np.mean(self.label_arr))
         print('dispersion value = ', np.std(self.label_arr))
         self.std = float(np.std(self.label_arr))
-        self.data_len = len(self.data_info.index)
-
-    def __getitem__(self, index):
-        single_image_name = os.path.join(self.root_dir,self.image_arr[index])
-        img_as_img = load_image(single_image_name, self.channels)
-        image = self.transforms(img_as_img)
-        target = torch.FloatTensor([float(self.label_arr[index] )])
-        return image, target
-
-    def __len__(self):
-        return self.data_len
 
 
 def make_dataloaders (dataset, batch_size, splitratio = 0.2):

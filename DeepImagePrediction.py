@@ -11,8 +11,8 @@ CHANNELS = 3
 DIMENSION = 1
 
 LR_THRESHOLD = 1e-7
-TRYING_LR = 5
-DEGRADATION_TOLERANCY = 5
+TRYING_LR = 3
+DEGRADATION_TOLERANCY = 7
 ACCURACY_TRESHOLD = float(0.0625)
 
 
@@ -62,9 +62,10 @@ class DeepImagePrediction(object):
         self.report.close()
 
     def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
-        if resume_train and os.path.isfile(self.modelPath + 'BestPredictor.pth'):
+        #print(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth')
+        if resume_train and os.path.isfile(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
-            self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
+            self.predictor.load_state_dict(torch.load(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'))
             self.dispersion = dataloaders['train'].dataset.std
         since = time.time()
         best_loss = 10000.0
@@ -129,10 +130,10 @@ class DeepImagePrediction(object):
                     degradation = 0
                     best_loss = epoch_loss
                     print('curent best_loss ', best_loss)
-                    self.save('/BestPredictor')
+                    self.save('BestPredictor')
                 else:
                     counter += 1
-                    self.save('/RegularPredictor')
+                    self.save('RegularPredictor')
 
             if counter > TRYING_LR * 2:
                 for param_group in self.optimizer.param_groups:
@@ -140,6 +141,13 @@ class DeepImagePrediction(object):
                     if lr >= LR_THRESHOLD:
                         param_group['lr'] = lr * 0.5
                         print('! Decrease LearningRate !', lr)
+
+                probas = self.predictor.get_dropout()
+                if probas < 0.99:
+                    print('! Increase DropOut value !', probas)
+                    probas += 0.1
+                    self.predictor.set_dropout(probas)
+
                 counter = 0
                 degradation += 1
             if degradation > DEGRADATION_TOLERANCY:
@@ -160,7 +168,7 @@ class DeepImagePrediction(object):
             self.predictor.load_state_dict(torch.load(modelPath))
             print('load Predictor model')
         else:
-            self.predictor.load_state_dict(torch.load(self.modelPath + 'BestPredictor.pth'))
+            self.predictor.load_state_dict(torch.load(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'))
             print('load BestPredictor ')
         print(len(test_loader.dataset))
         i = 0
@@ -217,9 +225,10 @@ class DeepImagePrediction(object):
 
     def save(self, model):
         self.predictor = self.predictor.cpu()
+        self.predictor.eval()
         x = Variable(torch.zeros(1, CHANNELS, IMAGE_SIZE, IMAGE_SIZE))
-        torch_out = torch.onnx._export(self.predictor, x,self.modelPath + '/' + model + ".onnx", export_params=True)
-        torch.save(self.predictor.state_dict(), self.modelPath + '/' + model + ".pth")
+        torch_out = torch.onnx._export(self.predictor, x, self.modelPath + '/' + str(self.predictor.__class__.__name__) + "_" + model + ".onnx", export_params=True)
+        torch.save(self.predictor.state_dict(), self.modelPath + '/' + str(self.predictor.__class__.__name__) + "_" + model  + ".pth")
 
         if self.use_gpu:
             self.predictor = self.predictor.cuda()

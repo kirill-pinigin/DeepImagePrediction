@@ -111,6 +111,7 @@ class SqueezeSimplePredictor(nn.Module):
                         init.constant(m.bias, 0)
 
         self.predictor = nn.Sequential(
+            nn.Dropout(p=0),
             nn.Conv2d(LATENT_DIM, dimension, kernel_size=1),
             final_norm_layer,
             activation,
@@ -153,6 +154,16 @@ class SqueezeSimplePredictor(nn.Module):
             for param in m.parameters():
                 param.requires_grad = True
 
+    def get_dropout(self):
+        return self.predictor[0].p
+
+    def set_dropout(self, proba = 0):
+        if proba < 0:
+            proba = 0
+        if proba > 0.99:
+            proba = 0.99
+        self.predictor[0].p = proba
+
 
 class SqueezeResidualPredictor(SqueezeSimplePredictor):
     def __init__(self, channels=3, dimension=35, activation=nn.ReLU(), pretrained=True):
@@ -171,6 +182,7 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
 
         self.predictor = nn.Sequential(
             Perceptron(LATENT_DIM, sub_dimension),
+            nn.Dropout(p=0),
             activation,
             Perceptron(sub_dimension, dimension),
         )
@@ -198,6 +210,16 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
         x = self.features(x)
         x = self.predictor(x)
         return x
+
+    def get_dropout(self):
+        return self.predictor[1].p
+
+    def set_dropout(self, proba = 0):
+        if proba < 0:
+            proba = 0
+        if proba > 0.99:
+            proba = 0.99
+        self.predictor[1].p = proba
 
 
 class SqueezeShuntPredictor(SqueezeResidualPredictor):

@@ -141,6 +141,7 @@ class ResidualPredictor(nn.Module):
 
         self.predictor = nn.Sequential(
             Perceptron(LATENT, LATENT),
+            nn.Dropout(p=0),
             activation,
             Perceptron(LATENT, dimension),
         )
@@ -169,6 +170,16 @@ class ResidualPredictor(nn.Module):
     def unfreeze(self):
         for param in self.model.parameters():
             param.requires_grad = True
+
+    def get_dropout(self):
+        return self.predictor[1].p
+
+    def set_dropout(self, proba = 0):
+        if proba < 0:
+            proba = 0
+        if proba > 0.99:
+            proba = 0.99
+        self.predictor[1].p = proba
 
     def _make_layer(self, block, planes, blocks, stride=1, activation = nn.ReLU):
         downsample = None
