@@ -23,7 +23,7 @@ def load_image(filepath, channels = 3):
 MAXIMUM_VALUE = float(88.39)
 MINIMUM_VALUE = float(3.91)
 
-class ImagesRegressionCSVDataSet(Dataset):
+class ImagePredictionCSVDataSet(Dataset):
     def __init__(self, dir, csv_path, channels, transforms):
         self.root_dir = dir
         self.channels = channels
