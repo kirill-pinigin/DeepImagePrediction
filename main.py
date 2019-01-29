@@ -22,7 +22,9 @@ parser.add_argument('--activation',     type = str,   default='ReLU', help='type
 parser.add_argument('--criterion',      type = str,   default='BCE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default=1e-4)
-parser.add_argument('--batch_size',     type = int,   default=16)
+parser.add_argument('--l2',             type = float, default=1e-3)
+parser.add_argument('--dropout',        type = float, default=0)
+parser.add_argument('--batch_size',     type = int,   default=64)
 parser.add_argument('--epochs',         type = int,   default=64)
 parser.add_argument('--resume_train',   type = bool,  default=True, help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default=True, help='type of training')
@@ -64,13 +66,13 @@ function = (activation_types[args.activation] if args.activation in activation_t
 
 predictor = model(dimension=DIMENSION , channels=CHANNELS, activation=function, pretrained = args.pretrained + args.transfer)
 
-optimizer =(optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr)
+optimizer =(optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr, weight_decay=args.l2)
 
 criterion = (criterion_types[args.criterion] if args.criterion in criterion_types else criterion_types['MSE'])
 
 train_transforms_list = [
         transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
+        #transforms.RandomVerticalFlip(),
         transforms.Resize((IMAGE_SIZE, IMAGE_SIZE), interpolation=3),
         #transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
         transforms.ToTensor(),
@@ -98,10 +100,9 @@ framework = DeepImagePrediction(predictor = predictor, criterion = criterion, op
 
 if args.transfer:
     framework.predictor.freeze()
-    framework.predictor.set_dropout(0.1)
-    framework.optimizer = (optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr / 10.0)
-    framework.approximate(dataloaders=dataloaders, num_epochs=int(args.epochs / 2), resume_train=args.resume_train)
+    #framework.optimizer = (optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr / 10.0)
+    framework.approximate(dataloaders=dataloaders, num_epochs=int(args.epochs / 2), resume_train=args.resume_train, dropout_factor=args.dropout)
     framework.predictor.unfreeze()
 
-framework.approximate(dataloaders = dataloaders, num_epochs=args.epochs, resume_train=args.resume_train)
+framework.approximate(dataloaders = dataloaders, num_epochs=args.epochs, resume_train=args.resume_train, dropout_factor=args.dropout)
 framework.evaluate(testloader)

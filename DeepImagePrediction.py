@@ -61,7 +61,7 @@ class DeepImagePrediction(object):
     def __del__(self):
         self.report.close()
 
-    def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
+    def approximate(self, dataloaders, num_epochs = 20, resume_train = False, dropout_factor=0):
         #print(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth')
         if resume_train and os.path.isfile(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
@@ -73,6 +73,7 @@ class DeepImagePrediction(object):
         counter = 0
         i = int(0)
         degradation = 0
+        self.predictor.set_dropout(dropout_factor)
         for epoch in range(num_epochs):
             _stdout = sys.stdout
             sys.stdout = self.report
@@ -143,7 +144,7 @@ class DeepImagePrediction(object):
                         print('! Decrease LearningRate !', lr)
 
                 probas = self.predictor.get_dropout()
-                if probas < 0.99:
+                if dropout_factor > 0 and dropout_factor < 1 and probas < 0.99:
                     print('! Increase DropOut value !', probas)
                     probas += 0.1
                     self.predictor.set_dropout(probas)
