@@ -116,6 +116,7 @@ class SqueezeSimplePredictor(nn.Module):
             final_norm_layer,
             activation,
             nn.AvgPool2d(kernel_size=12,stride=1),
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -185,6 +186,7 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
             nn.Dropout(p=0),
             activation,
             Perceptron(sub_dimension, dimension),
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
