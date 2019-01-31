@@ -62,10 +62,10 @@ class DeepImagePrediction(object):
         self.report.close()
 
     def approximate(self, dataloaders, num_epochs = 20, resume_train = False, dropout_factor=0):
-        #print(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth')
-        if resume_train and os.path.isfile(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'):
+        path = self.modelPath +"/"+ str(self.predictor.__class__.__name__) +  str(self.predictor.activation.__class__.__name__)
+        if resume_train and os.path.isfile(path + '_BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
-            self.predictor.load_state_dict(torch.load(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'))
+            self.predictor.load_state_dict(torch.load(path + '_BestPredictor.pth'))
             self.dispersion = dataloaders['train'].dataset.std
         since = time.time()
         best_loss = 10000.0
@@ -103,7 +103,7 @@ class DeepImagePrediction(object):
 
                     outputs = self.predictor(inputs)
                     diff = self.accuracy(outputs, targets)
-                    #diff = float(1.0) - diff / self.dispersion
+                    diff = float(1.0) - diff
                     loss = self.criterion(outputs, targets)
                     if phase == 'train':
                         loss.backward()
@@ -117,20 +117,20 @@ class DeepImagePrediction(object):
 
                 _stdout = sys.stdout
                 sys.stdout = self.report
-                print('{} Loss: {:.4f} Accuracy Mean Absolute Error {:.4f} '.format(
+                print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
                     phase, epoch_loss, epoch_acc))
                 self.report.flush()
 
                 sys.stdout = _stdout
-                print('{} Loss: {:.4f} Accuracy Mean Absolute Error {:.4f} '.format(
+                print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
                     phase, epoch_loss, epoch_acc))
                 self.report.flush()
 
-                if phase == 'val' and epoch_loss < best_loss:
+                if phase == 'val' and epoch_acc > best_acc:
                     counter = 0
                     degradation = 0
-                    best_loss = epoch_loss
-                    print('curent best_loss ', best_loss)
+                    best_acc = epoch_acc
+                    print('curent best_acc ', best_acc)
                     self.save('BestPredictor')
                 else:
                     counter += 1
@@ -152,15 +152,15 @@ class DeepImagePrediction(object):
                 counter = 0
                 degradation += 1
             if degradation > DEGRADATION_TOLERANCY:
-                print('This is the end! Best val best_loss: {:4f}'.format(best_loss))
-                return best_loss
+                print('This is the end! Best val best_acc: {:4f}'.format(best_acc))
+                return best_acc
 
         time_elapsed = time.time() - since
 
         print('Training complete in {:.0f}m {:.0f}s'.format(
             time_elapsed // 60, time_elapsed % 60))
-        print('Best val best_loss: {:4f}'.format(best_loss))
-        return best_loss
+        print('Best val best_acc: {:4f}'.format(best_acc))
+        return best_acc
 
 
     def evaluate(self, test_loader, isSaveImages = True, modelPath=None):
@@ -169,7 +169,7 @@ class DeepImagePrediction(object):
             self.predictor.load_state_dict(torch.load(modelPath))
             print('load Predictor model')
         else:
-            self.predictor.load_state_dict(torch.load(self.modelPath +"/"+ str(self.predictor.__class__.__name__) + '_BestPredictor.pth'))
+            self.predictor.load_state_dict(torch.load(self.modelPath +"/"+ str(self.predictor.__class__.__name__) +  str(self.predictor.activation.__class__.__name__) + '_BestPredictor.pth'))
             print('load BestPredictor ')
         print(len(test_loader.dataset))
         i = 0
@@ -228,8 +228,9 @@ class DeepImagePrediction(object):
         self.predictor = self.predictor.cpu()
         self.predictor.eval()
         x = Variable(torch.zeros(1, CHANNELS, IMAGE_SIZE, IMAGE_SIZE))
-        torch_out = torch.onnx._export(self.predictor, x, self.modelPath + '/' + str(self.predictor.__class__.__name__) + "_" + model + ".onnx", export_params=True)
-        torch.save(self.predictor.state_dict(), self.modelPath + '/' + str(self.predictor.__class__.__name__) + "_" + model  + ".pth")
+        path = self.modelPath +"/"+ str(self.predictor.__class__.__name__ ) +  str(self.predictor.activation.__class__.__name__)
+        torch_out = torch.onnx._export(self.predictor, x, path + "_" + model + ".onnx", export_params=True)
+        torch.save(self.predictor.state_dict(), path + "_" + model  + ".pth")
 
         if self.use_gpu:
             self.predictor = self.predictor.cuda()

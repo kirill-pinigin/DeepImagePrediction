@@ -18,13 +18,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir',       type = str,   default='./koniq10k_224x224/', help='path to dataset')
 parser.add_argument('--result_dir',     type = str,   default='./RESULTS/', help='path to result')
 parser.add_argument('--predictor',      type = str,   default='MobilePredictor', help='type of image generator')
-parser.add_argument('--activation',     type = str,   default='SELU', help='type of activation')
+parser.add_argument('--activation',     type = str,   default='SILU', help='type of activation')
 parser.add_argument('--criterion',      type = str,   default='BCE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default=1e-4)
 parser.add_argument('--l2',             type = float, default=0)
 parser.add_argument('--dropout',        type = float, default=0)
-parser.add_argument('--batch_size',     type = int,   default=32)
+parser.add_argument('--batch_size',     type = int,   default=16)
 parser.add_argument('--epochs',         type = int,   default=64)
 parser.add_argument('--resume_train',   type = bool,  default=True, help='type of training')
 parser.add_argument('--pretrained',     type = bool,  default=True, help='type of training')
@@ -56,9 +56,9 @@ criterion_types = {
                     }
 
 optimizer_types = {
-                    'Adam'          : optim.Adam,
-                    'RMSprop'       : optim.RMSprop,
-                    'SGD'           : optim.SGD
+                    'Adam'     : optim.Adam,
+                    'RMSprop'  : optim.RMSprop,
+                    'SGD'      : optim.SGD
                     }
 
 model = (predictor_types[args.predictor] if args.predictor in predictor_types else predictor_types['ResidualPredictor'])
@@ -101,7 +101,7 @@ framework = DeepImagePrediction(predictor = predictor, criterion = criterion, op
 if args.transfer:
     framework.predictor.freeze()
     framework.optimizer = (optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(predictor.parameters(), lr = args.lr / 2)
-    framework.approximate(dataloaders=dataloaders, num_epochs= int(args.epochs / 2) if int(args.epochs / 2) < 21 else 21, resume_train=args.resume_train, dropout_factor=args.dropout)
+    framework.approximate(dataloaders=dataloaders, num_epochs= int(args.epochs / 2) if int(args.epochs / 2) < 12 else 12, resume_train=args.resume_train, dropout_factor=args.dropout)
     framework.predictor.unfreeze()
 
 framework.approximate(dataloaders = dataloaders, num_epochs=args.epochs, resume_train=args.resume_train, dropout_factor=args.dropout)
