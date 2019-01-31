@@ -20,8 +20,8 @@ def load_image(filepath, channels = 3):
         image = Image.open(filepath).convert('RGB')
     return image
 
-MAXIMUM_VALUE = float(88.39)
-MINIMUM_VALUE = float(3.91)
+MAXIMUM_VALUE = float(4.31)
+MINIMUM_VALUE = float(1.096)
 
 class ImagePredictionCSVDataSet(Dataset):
     def __init__(self, dir, csv_path, channels, transforms):
@@ -30,7 +30,7 @@ class ImagePredictionCSVDataSet(Dataset):
         self.transforms = transforms
         self.data_info = pd.read_csv(csv_path, header=0)
         self.image_arr = np.asarray(self.data_info.iloc[:, 0])
-        self.label_arr = np.asarray(self.data_info.iloc[:, 2])
+        self.label_arr = np.asarray(self.data_info.iloc[:, 1])
         self.data_len = len(self.data_info.index)
         self.statistics()
 

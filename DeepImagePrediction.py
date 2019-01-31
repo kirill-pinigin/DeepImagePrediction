@@ -191,7 +191,7 @@ class DeepImagePrediction(object):
 
             outputs = self.predictor(inputs)
             diff = self.accuracy(outputs, targets)
-            #diff = float(1.0) - diff / self.dispersion
+            diff = float(1.0) - diff
             loss = self.criterion(outputs, targets)
             running_loss += loss.item() * inputs.size(0)
             running_corrects += diff.item() * inputs.size(0)
