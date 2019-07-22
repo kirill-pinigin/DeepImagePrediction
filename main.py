@@ -4,10 +4,9 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
-import torchvision.transforms as transforms
-from  ImagePredictionCSVDataSet import  ImagePredictionCSVDataSet , make_dataloaders
+from  ImagePredictionCSVDataSet import  ImagePredictionCSVDataSet
 
-from DeepImagePrediction import DeepImagePrediction, IMAGE_SIZE, CHANNELS, DIMENSION
+from DeepImagePrediction import DeepImagePrediction
 from MobilePredictor import MobilePredictor
 from MnasPredictor import MnasPredictor
 from ResidualPredictor import ResidualPredictor
@@ -28,7 +27,6 @@ parser.add_argument('--epochs',         type = int,   default=64)
 parser.add_argument('--resume_train',   type = bool,  default=True, help='type of training')
 
 args = parser.parse_args()
-
 
 predictor_types = { 'ResidualPredictor'        : ResidualPredictor,
                     'MobilePredictor'          : MobilePredictor,

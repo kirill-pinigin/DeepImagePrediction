@@ -70,9 +70,9 @@ class DeepImagePrediction(object):
 
     def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
         path = self.modelPath +"/"+ str(self.predictor.__class__.__name__) +  str(self.predictor.activation.__class__.__name__)
-        if resume_train and os.path.isfile(path + '_BestPredictor.pth'):
+        if resume_train and os.path.isfile(path + '_Best.pth'):
             print( "RESUME training load Bestpredictor")
-            self.predictor.load_state_dict(torch.load(path + '_BestPredictor.pth'))
+            self.predictor.load_state_dict(torch.load(path + '_Best.pth'))
             self.dispersion = dataloaders['train'].dataset.std
         since = time.time()
         best_loss = 10000.0
@@ -139,10 +139,10 @@ class DeepImagePrediction(object):
                     degradation = 0
                     best_acc = epoch_acc
                     print('curent best_acc ', best_acc)
-                    self.save('BestPredictor')
+                    self.save('Best')
                 else:
                     counter += 1
-                    self.save('RegularPredictor')
+                    self.save('Regular')
 
             if counter > TRYING_LR * 2:
                 for param_group in self.optimizer.param_groups:
