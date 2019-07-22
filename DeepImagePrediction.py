@@ -8,7 +8,7 @@ import numpy as np
 
 IMAGE_SIZE = 224
 CHANNELS = 3
-DIMENSION = 1
+DIMENSION = 6
 
 LR_THRESHOLD = 1e-7
 TRYING_LR = 3
@@ -27,9 +27,9 @@ class DeepImagePrediction(object):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.cudas = list(range(torch.cuda.device_count()))
 
-        config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) #+ '_' + str(predictor.norm1.__class__.__name__)
+        config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__)
         config += '_' + str(criterion.__class__.__name__)
-        config += "_" + str(optimizer.__class__.__name__) #+ "_lr_" + str( optimizer.param_groups[0]['lr'])
+        config += "_" + str(optimizer.__class__.__name__)
 
         print(self.device)
         print(torch.cuda.device_count())
@@ -68,7 +68,7 @@ class DeepImagePrediction(object):
     def __del__(self):
         self.report.close()
 
-    def approximate(self, dataloaders, num_epochs = 20, resume_train = False, dropout_factor=0):
+    def approximate(self, dataloaders, num_epochs = 20, resume_train = False):
         path = self.modelPath +"/"+ str(self.predictor.__class__.__name__) +  str(self.predictor.activation.__class__.__name__)
         if resume_train and os.path.isfile(path + '_BestPredictor.pth'):
             print( "RESUME training load Bestpredictor")
@@ -150,12 +150,6 @@ class DeepImagePrediction(object):
                     if lr >= LR_THRESHOLD:
                         param_group['lr'] = lr * 0.2
                         print('! Decrease LearningRate !', lr)
-
-                probas = self.predictor.get_dropout()
-                if dropout_factor > 0 and dropout_factor < 1 and probas < 0.99:
-                    print('! Increase DropOut value !', probas)
-                    probas += 0.1
-                    self.predictor.set_dropout(probas)
 
                 counter = 0
                 degradation += 1
