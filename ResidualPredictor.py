@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 from torchvision import models
 from NeuralModels import SILU, Perceptron
+from DeepImagePrediction import DIMENSION, CHANNELS
 
 LATENT = 512
-REDUCTION = 8
+REDUCTION = 7
 FEATURES = 64
 
 
@@ -100,18 +101,18 @@ class Bottleneck(nn.Module):
 
 
 class ResidualPredictor(nn.Module):
-    def __init__(self, channels = 1, dimension=1, activation = SILU(), pretrained = True):
+    def __init__(self, activation = SILU(), pretrained = True):
         super(ResidualPredictor, self).__init__()
         self.activation = activation
         self.inplanes = FEATURES
         layers = [2,2,2,2]
         block = BasicBlock
         base_model = models.resnet18(pretrained=pretrained)
-        conv = nn.Conv2d(channels, FEATURES, kernel_size=7, stride=2, padding=3, bias=False)
-        weight = torch.FloatTensor(FEATURES, channels, 7, 7)
+        conv = nn.Conv2d(CHANNELS, FEATURES, kernel_size=7, stride=2, padding=3, bias=False)
+        weight = torch.FloatTensor(FEATURES, CHANNELS, 7, 7)
         parameters = list(base_model.parameters())
         for i in range(FEATURES):
-            if channels == 1:
+            if CHANNELS == 1:
                 weight[i, :, :, :] = parameters[0].data[i].mean(0)
             else:
                 weight[i, :, :, :] = parameters[0].data[i]
@@ -125,7 +126,7 @@ class ResidualPredictor(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2, activation = activation)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, activation = activation)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, activation = activation)
-        self.avgpool = nn.AvgPool2d(REDUCTION, stride=1)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
         if pretrained:
             self.bn1.weight.data.copy_(base_model.bn1.weight)
             self.bn1.bias.data.copy_(base_model.bn1.bias)
@@ -143,7 +144,7 @@ class ResidualPredictor(nn.Module):
             Perceptron(LATENT, LATENT),
             nn.Dropout(p=0),
             activation,
-            Perceptron(LATENT, dimension),
+            Perceptron(LATENT, DIMENSION),
         )
 
     def forward(self, x):
@@ -159,7 +160,7 @@ class ResidualPredictor(nn.Module):
         x = self.avgpool(x)
 
         x = self.predictor(x)
-        return x
+        return torch.sigmoid(x)
 
     def freeze(self):
         for param in self.model.parameters():

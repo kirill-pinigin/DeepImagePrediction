@@ -2,43 +2,55 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 import os
-
+import torchvision
 import torch
 
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 
+from DeepImagePrediction import CHANNELS, IMAGE_SIZE, DIMENSION
 
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
-def load_image(filepath, channels = 3):
-    if channels == 1:
-        image = Image.open(filepath).convert('YCbCr')
-        image, _, _ = image.split()
-    else:
+def load_image(filepath):
+    if CHANNELS == 3:
         image = Image.open(filepath).convert('RGB')
+    else :
+        image = Image.open(filepath).convert('L')
+
     return image
 
-MAXIMUM_VALUE = float(4.31)
-MINIMUM_VALUE = float(1.096)
 
 class ImagePredictionCSVDataSet(Dataset):
-    def __init__(self, dir, csv_path, channels, transforms):
+    def __init__(self, dir, csv_path,  augmentation: bool = False):
         self.root_dir = dir
-        self.channels = channels
-        self.transforms = transforms
+        transforms_list = [
+            torchvision.transforms.CenterCrop(IMAGE_SIZE),
+            torchvision.transforms.ToTensor(),
+        ]
+
+        if augmentation:
+            transforms_list = [
+                                  torchvision.transforms.RandomCrop(IMAGE_SIZE),
+                                  torchvision.transforms.RandomHorizontalFlip(),
+                                  torchvision.transforms.RandomVerticalFlip(),
+                              ] + transforms_list
+
+        self.transforms = torchvision.transforms.Compose(transforms_list)
+
         self.data_info = pd.read_csv(csv_path, header=0)
-        self.image_arr = np.asarray(self.data_info.iloc[:, 0])
-        self.label_arr = np.asarray(self.data_info.iloc[:, 1])
+        self.image_arr = np.asarray(self.data_info.iloc[0:, 0])
+        self.label_arr = np.asarray(self.data_info.iloc[0:, 1:DIMENSION + 1])
         self.data_len = len(self.data_info.index)
         self.statistics()
 
     def __getitem__(self, index):
-        single_image_name = os.path.join(self.root_dir,self.image_arr[index])
-        img_as_img = load_image(single_image_name, self.channels)
+        single_image_name = os.path.join(self.root_dir, self.image_arr[index])
+        img_as_img = load_image(single_image_name)
         image = self.transforms(img_as_img)
-        target = torch.FloatTensor([float((self.label_arr[index] - MINIMUM_VALUE)/(MAXIMUM_VALUE - MINIMUM_VALUE))])
+        target = torch.from_numpy(self.label_arr[index]).float()
+        target = (target - self.min)/ (self.max - self.min)
         return image, target
 
     def __len__(self):
@@ -53,6 +65,7 @@ class ImagePredictionCSVDataSet(Dataset):
         self.mean = float(np.mean(self.label_arr))
         print('dispersion value = ', np.std(self.label_arr))
         self.std = float(np.std(self.label_arr))
+        print(self.label_arr.shape)
 
 
 def make_dataloaders (dataset, batch_size, splitratio = 0.2):

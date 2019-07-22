@@ -107,7 +107,7 @@ class MnasPredictor(nn.Module):
     def forward(self, x):
         x = self.features(x)
         x = self.predictor(x)
-        return x
+        return torch.sigmoid(x)
 
     def _initialize_weights(self):
         for m in self.modules():

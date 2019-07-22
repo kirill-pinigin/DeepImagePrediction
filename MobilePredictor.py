@@ -12,7 +12,6 @@ def conv_bn(inp, oup, stride , activation = nn.ReLU()):
         activation,
     )
 
-
 def conv_1x1_bn(inp, oup, activation = nn.ReLU()):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
@@ -167,30 +166,9 @@ class MobilePredictor(nn.Module):
             nn.Dropout(p=0),
             activation,
             Perceptron( 1280, dimension),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
         x = self.features(x)
         x = self.predictor(x)
-        return x
-
-    def freeze(self):
-        for param in self.features.parameters():
-            param.requires_grad = False
-        for param in self.predictor.parameters():
-            param.requires_grad = True
-
-    def unfreeze(self):
-        for param in self.parameters():
-            param.requires_grad = True
-
-    def get_dropout(self):
-        return self.predictor[1].p
-
-    def set_dropout(self, proba = 0):
-        if proba < 0:
-            proba = 0
-        if proba > 0.99:
-            proba = 0.99
-        self.predictor[1].p = proba
+        return torch.sigmoid(x)

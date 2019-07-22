@@ -116,7 +116,6 @@ class SqueezeSimplePredictor(nn.Module):
             final_norm_layer,
             activation,
             nn.AvgPool2d(kernel_size=12,stride=1),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -136,34 +135,7 @@ class SqueezeSimplePredictor(nn.Module):
         x = self.fire8(x)
         x = self.predictor(x)
         x = x.view(x.size(0), -1)
-        return x
-
-    def freeze(self):
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                for param in m.parameters():
-                    param.requires_grad = True
-            else:
-                for param in m.parameters():
-                    param.requires_grad = False
-
-        for param in self.predictor.parameters():
-            param.requires_grad = True
-
-    def unfreeze(self):
-        for m in self.modules():
-            for param in m.parameters():
-                param.requires_grad = True
-
-    def get_dropout(self):
-        return self.predictor[0].p
-
-    def set_dropout(self, proba = 0):
-        if proba < 0:
-            proba = 0
-        if proba > 0.99:
-            proba = 0.99
-        self.predictor[0].p = proba
+        return torch.sigmoid(x)
 
 
 class SqueezeResidualPredictor(SqueezeSimplePredictor):
@@ -186,7 +158,6 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
             nn.Dropout(p=0),
             activation,
             Perceptron(sub_dimension, dimension),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -211,17 +182,7 @@ class SqueezeResidualPredictor(SqueezeSimplePredictor):
         x = torch.add(x, d3)
         x = self.features(x)
         x = self.predictor(x)
-        return x
-
-    def get_dropout(self):
-        return self.predictor[1].p
-
-    def set_dropout(self, proba = 0):
-        if proba < 0:
-            proba = 0
-        if proba > 0.99:
-            proba = 0.99
-        self.predictor[1].p = proba
+        return torch.sigmoid(x)
 
 
 class SqueezeShuntPredictor(SqueezeResidualPredictor):
@@ -257,4 +218,4 @@ class SqueezeShuntPredictor(SqueezeResidualPredictor):
         x = self.fire8(d3)
         x = self.features(x)
         x = self.predictor(x)
-        return x
+        return torch.sigmoid(x)

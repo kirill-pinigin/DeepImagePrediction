@@ -3,7 +3,7 @@ import sys
 import os
 import torch
 from torch.autograd import Variable
-import torchvision
+import shutil
 import numpy as np
 
 IMAGE_SIZE = 224
@@ -24,9 +24,15 @@ class DeepImagePrediction(object):
         self.optimizer = optimizer
         self.use_gpu = torch.cuda.is_available()
         self.dispersion = 1.0
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.cudas = list(range(torch.cuda.device_count()))
+
         config = str(predictor.__class__.__name__) + '_' + str(predictor.activation.__class__.__name__) #+ '_' + str(predictor.norm1.__class__.__name__)
         config += '_' + str(criterion.__class__.__name__)
         config += "_" + str(optimizer.__class__.__name__) #+ "_lr_" + str( optimizer.param_groups[0]['lr'])
+
+        print(self.device)
+        print(torch.cuda.device_count())
 
         reportPath = os.path.join(directory, config + "/report/")
         flag = os.path.exists(reportPath)
@@ -46,6 +52,8 @@ class DeepImagePrediction(object):
             os.makedirs(self.images+'/bad/')
             os.makedirs(self.images + '/good/')
             print('os.makedirs("/images/")')
+        else:
+            shutil.rmtree(self.images)
 
         self.report = open(reportPath  + '/' + config + "_Report.txt", "w")
         _stdout = sys.stdout
@@ -55,8 +63,7 @@ class DeepImagePrediction(object):
         print(criterion)
         self.report.flush()
         sys.stdout = _stdout
-        if self.use_gpu :
-            self.predictor = self.predictor.cuda()
+        self.predictor = self.predictor.to(self.device)
 
     def __del__(self):
         self.report.close()
@@ -73,7 +80,7 @@ class DeepImagePrediction(object):
         counter = 0
         i = int(0)
         degradation = 0
-        self.predictor.set_dropout(dropout_factor)
+
         for epoch in range(num_epochs):
             _stdout = sys.stdout
             sys.stdout = self.report
@@ -85,6 +92,7 @@ class DeepImagePrediction(object):
             print('-' * 10)
 
             for phase in ['train', 'val']:
+
                 if phase == 'train':
                     self.predictor.train(True)
                 else:
@@ -92,19 +100,19 @@ class DeepImagePrediction(object):
 
                 running_loss = 0.0
                 running_corrects = 0
+
                 for data in dataloaders[phase]:
                     inputs, targets = data
-                    if self.use_gpu:
-                        inputs = Variable(inputs.cuda())
-                        targets = Variable(targets.cuda())
-                    else:
-                        inputs, targets = Variable(inputs), Variable(targets)
-                    self.optimizer.zero_grad()
 
-                    outputs = self.predictor(inputs)
+                    inputs = Variable(inputs.to(self.device))
+                    targets = Variable(targets.to(self.device))
+
+                    self.optimizer.zero_grad()
+                    outputs = torch.nn.parallel.data_parallel(module=self.predictor, inputs=inputs, device_ids = self.cudas)
                     diff = self.accuracy(outputs, targets)
                     diff = float(1.0) - diff
                     loss = self.criterion(outputs, targets)
+
                     if phase == 'train':
                         loss.backward()
                         self.optimizer.step()
@@ -163,7 +171,7 @@ class DeepImagePrediction(object):
         return best_acc
 
 
-    def evaluate(self, test_loader, isSaveImages = True, modelPath=None):
+    def estimate(self, test_loader, isSaveImages = True, modelPath=None):
         counter = 0
         if modelPath is not None:
             self.predictor.load_state_dict(torch.load(modelPath))
@@ -176,28 +184,19 @@ class DeepImagePrediction(object):
         since = time.time()
         self.predictor.train(False)
         self.predictor.eval()
-        if self.use_gpu:
-            self.predictor = self.predictor.cuda()
+        self.predictor = self.predictor.to(self.device)
         running_loss = 0.0
         running_corrects = 0
         for data in test_loader:
             inputs, targets = data
-
-            if self.use_gpu:
-                inputs = Variable(inputs.cuda())
-                targets = Variable(targets.cuda())
-            else:
-                inputs, targets = Variable(inputs), Variable(targets)
-
+            inputs = Variable(inputs.to(self.device))
+            targets = Variable(targets.to(self.device))
             outputs = self.predictor(inputs)
             diff = self.accuracy(outputs, targets)
             diff = float(1.0) - diff
             loss = self.criterion(outputs, targets)
             running_loss += loss.item() * inputs.size(0)
             running_corrects += diff.item() * inputs.size(0)
-            #print('output = ', float(outputs.item()), 'targets = ', float(targets.item()))
-            #print('diff = ', float(diff.item()))
-
 
             if isSaveImages and test_loader.batch_size == 1:
                 result = torch.round(outputs).data.cpu().numpy()
@@ -229,39 +228,7 @@ class DeepImagePrediction(object):
         self.predictor.eval()
         x = Variable(torch.zeros(1, CHANNELS, IMAGE_SIZE, IMAGE_SIZE))
         path = self.modelPath +"/"+ str(self.predictor.__class__.__name__ ) +  str(self.predictor.activation.__class__.__name__)
-        torch_out = torch.onnx._export(self.predictor, x, path + "_" + model + ".onnx", export_params=True)
-        torch.save(self.predictor.state_dict(), path + "_" + model  + ".pth")
-
-        if self.use_gpu:
-            self.predictor = self.predictor.cuda()
-
-'''
-class MultiLabelLoss(torch.nn.Module):
-    def __init__(self):
-        super(MultiLabelLoss, self).__init__()
-        self.criterion = torch.nn.BCELoss()
-        self.penalty = torch.nn.MSELoss()
-        self.loss = None
-
-    def forward(self, input, target):
-        p = input.data.cpu().numpy()
-        t = target.data.cpu().numpy()
-        positive_input = Variable(torch.from_numpy(p[np.nonzero(t)]))
-        positive_target = Variable(torch.from_numpy(t[np.nonzero(t)]))
-        negative_input = Variable(torch.from_numpy(p[np.where(t == 0)]))
-        negative_target = Variable(torch.from_numpy(t[np.where(t == 0)]))
-        if torch.cuda.is_available():
-            positive_input  = positive_input .cuda()
-            positive_target = positive_target.cuda()
-            negative_input  = negative_input .cuda()
-            negative_target = negative_target.cuda()
-
-        bce_loss = self.criterion(input, target)
-        false_positive_penalty = self.penalty(positive_input, positive_target)
-        false_negative_penalty= self.penalty(negative_input, negative_target)
-        self.loss =  bce_loss + 0.1*false_negative_penalty + 0.1*false_positive_penalty
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
-'''
+        torch.save(self.predictor.state_dict(), path + "_" + model + ".pth")
+        source = "Color" if CHANNELS == 3 else "Gray"
+        torch_out = torch.onnx._export(self.predictor, x, path + source + str(IMAGE_SIZE) + "_" + model + ".onnx", export_params=True)
+        self.predictor = self.predictor.to(self.device)
