@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from NeuralModels import SILU, Perceptron
-from DeepImagePrediction import IMAGE_SIZE
+from DeepImagePrediction import IMAGE_SIZE, DIMENSION, CHANNELS
 
 import math
 
@@ -138,16 +138,16 @@ def mobile_net_v2(dimension=1000, channels = 3, input_size=224, width_mult=1., p
 
 
 class MobilePredictor(nn.Module):
-    def __init__(self, channels=3, dimension=1, activation=SILU(), pretrained=True):
+    def __init__(self, activation=SILU(), pretrained=True):
         super(MobilePredictor, self).__init__()
         self.activation = activation
-        base_model = mobile_net_v2(dimension=dimension, channels = channels, input_size=IMAGE_SIZE, width_mult=1., pretrained = pretrained)
+        base_model = mobile_net_v2(dimension=DIMENSION, channels = CHANNELS, input_size=IMAGE_SIZE, width_mult=1., pretrained = pretrained)
         base_model = nn.Sequential(*list(base_model.children())[:-1])
-        conv = nn.Conv2d(channels, 32, kernel_size=3, stride=2, padding=3, bias=False)
-        weight = torch.FloatTensor(32, channels, 3, 3)
+        conv = nn.Conv2d(CHANNELS, 32, kernel_size=3, stride=2, padding=3, bias=False)
+        weight = torch.FloatTensor(32, CHANNELS, 3, 3)
         parameters = list(base_model.parameters())
         for i in range(32):
-            if channels == 1:
+            if CHANNELS == 1:
                 weight[i, :, :, :] = parameters[0].data[i].mean(0)
             else:
                 weight[i, :, :, :] = parameters[0].data[i]
@@ -165,7 +165,7 @@ class MobilePredictor(nn.Module):
             Perceptron(1280, 1280),
             nn.Dropout(p=0),
             activation,
-            Perceptron( 1280, dimension),
+            Perceptron( 1280, DIMENSION),
         )
 
     def forward(self, x):
