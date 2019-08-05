@@ -21,8 +21,8 @@ parser.add_argument('--activation',     type = str,   default='ReLU', help='type
 parser.add_argument('--criterion',      type = str,   default='BCE', help='type of criterion')
 parser.add_argument('--optimizer',      type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--lr',             type = float, default=1e-3)
-parser.add_argument('--l2',             type = float, default=1e-3)
-parser.add_argument('--batch_size',     type = int,   default=64)
+parser.add_argument('--l2',             type = float, default=0)
+parser.add_argument('--batch_size',     type = int,   default=80)
 parser.add_argument('--epochs',         type = int,   default=64)
 parser.add_argument('--resume_train',   type = bool,  default=True, help='type of training')
 
